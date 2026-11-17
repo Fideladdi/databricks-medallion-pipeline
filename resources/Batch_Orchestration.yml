@@ -1,0 +1,104 @@
+resources:
+  jobs:
+    Batch_Orchestration:
+      name: Batch_Orchestration
+      email_notifications:
+        on_start:
+          - ${var.notification_email}
+        on_success:
+          - ${var.notification_email}
+        on_failure:
+          - ${var.notification_email}
+      trigger:
+        pause_status: ${var.trigger_status}
+        file_arrival:
+          url: abfss://${var.container}@${var.storage_account}.dfs.core.windows.net/landing/
+          wait_after_last_change_seconds: 60
+      tasks:
+        - task_key: 000_create_control_table
+          notebook_task:
+            notebook_path: ../notebooks/control_table/000_Create_Control_Table.ipynb
+            source: WORKSPACE
+        - task_key: 001_Identify_next_batch
+          depends_on:
+            - task_key: 000_create_control_table
+          notebook_task:
+            notebook_path: ../notebooks/control_table/001_Identify_next_batch.ipynb
+            source: WORKSPACE
+          environment_key: 001_Identify_next_batch_environment
+        - task_key: is_there_a_batch_to_process
+          depends_on:
+            - task_key: 001_Identify_next_batch
+          condition_task:
+            op: EQUAL_TO
+            left: "{{tasks.001_Identify_next_batch.values.has_batch}}"
+            right: "true"
+        - task_key: 002_Create_New_Batch
+          depends_on:
+            - task_key: is_there_a_batch_to_process
+              outcome: "true"
+          notebook_task:
+            notebook_path: ../notebooks/control_table/002_Create_New_Batch.ipynb
+            base_parameters:
+              id: "{{tasks.001_Identify_next_batch.values.id}}"
+            source: WORKSPACE
+          environment_key: 001_Identify_next_batch_environment
+        - task_key: auction_results_job
+          depends_on:
+            - task_key: 002_Create_New_Batch
+          run_job_task:
+            job_id: ${resources.jobs.Auction_results_job.id}
+            job_parameters:
+              id: "{{tasks.001_Identify_next_batch.values.id}}"
+        - task_key: did_the_job_fail
+          depends_on:
+            - task_key: auction_results_job
+          run_if: ALL_DONE
+          condition_task:
+            op: EQUAL_TO
+            left: "{{tasks.auction_results_job.result_state}}"
+            right: failed
+        - task_key: update_control_table_on_fail
+          depends_on:
+            - task_key: did_the_job_fail
+              outcome: "true"
+          notebook_task:
+            notebook_path: ../notebooks/control_table/004_Failed_Batch.ipynb
+            base_parameters:
+              id: "{{tasks.001_Identify_next_batch.values.id}}"
+            source: WORKSPACE
+          environment_key: 001_Identify_next_batch_environment
+        - task_key: 003_Complete_Batch
+          depends_on:
+            - task_key: did_the_job_fail
+              outcome: "false"
+          notebook_task:
+            notebook_path: ../notebooks/control_table/003_Complete_Batch.ipynb
+            base_parameters:
+              id: "{{tasks.001_Identify_next_batch.values.id}}"
+            source: WORKSPACE
+          environment_key: 001_Identify_next_batch_environment
+        - task_key: 009_Slack_Bot
+          depends_on:
+            - task_key: 003_Complete_Batch
+          notebook_task:
+            notebook_path: ../notebooks/Gold/009_Slack_Bot.ipynb
+            base_parameters:
+              id: "{{tasks.001_Identify_next_batch.values.id}}"
+            source: WORKSPACE
+      tags:
+        ResourceClass: SingleNode
+      queue:
+        enabled: true
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: container
+          default: ${var.container}
+        - name: storage_account
+          default: ${var.storage_account}
+      environments:
+        - environment_key: 001_Identify_next_batch_environment
+          spec:
+            environment_version: "5"
+      performance_target: PERFORMANCE_OPTIMIZED

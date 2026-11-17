@@ -1,0 +1,78 @@
+# This is a Declarative Automation Bundle definition for databricks_medallion_pipeline.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+bundle:
+  name: databricks_medallion_pipeline
+  uuid: 109f9b80-4131-42fe-bf1b-4d20a2e24dc0
+
+include:
+  - resources/*.yml
+
+# Variable declarations. These variables are assigned in the dev/prod targets below.
+variables:
+  catalog:
+    description: The catalog to use  
+  storage_account:
+    description: The container to use
+  container:
+    description: The container to use
+  schema:
+    description: The schema to use
+  notification_email:
+    description: Address that receives job start / success / failure emails
+    default: you@example.com
+  trigger_status:
+    description: Controls automatic file arrival triggering
+    default: PAUSED
+
+targets:
+  dev:
+    # The default target uses 'mode: development' to create a development copy.
+    # - Deployed resources get prefixed with '[dev my_user_name]'
+    # - Any job schedules and triggers are paused by default.
+    # See also https://docs.databricks.com/dev-tools/bundles/deployment-modes.html.
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-0000000000000001.1.azuredatabricks.net
+    variables:
+      catalog: company_dev
+      storage_account: stcompanydev 
+      container: company-dev 
+      schema: dev
+    presets:
+      artifacts_dynamic_version: true
+
+  test:
+    mode: production
+    workspace:
+      host: https://adb-0000000000000002.2.azuredatabricks.net
+      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: company_test
+      storage_account: stcompanytest
+      container: company-test
+      schema: prod
+    permissions:
+      # replace user_name with service principle name (client if)
+      - service_principal_name: <test-service-principal-application-id>
+        level: CAN_MANAGE
+    run_as:
+      service_principal_name: <test-service-principal-application-id>
+
+  prod:
+    mode: production
+    workspace:
+      host: https://adb-0000000000000003.3.azuredatabricks.net
+      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: company_prod
+      storage_account: stcompanyprod
+      container: company-prod
+      schema: prod
+      trigger_status: UNPAUSED
+    permissions:
+          # replace user_name with service principle name (client if)
+      - service_principal_name: <prod-service-principal-application-id>
+        level: CAN_MANAGE
+    run_as:
+      service_principal_name: <prod-service-principal-application-id>

@@ -1,0 +1,179 @@
+resources:
+  jobs:
+    Auction_results_job:
+      name: Auction_results_job
+      tasks:
+        - task_key: 001_auctionsales_report_Ingest
+          notebook_task:
+            notebook_path: ../notebooks/bronze/001_auctionsales_report.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 001_auctionsales_report_silver
+          depends_on:
+            - task_key: 001_auctionsales_report_Ingest
+          notebook_task:
+            notebook_path: ../notebooks/Silver/001_auctionsales_report.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 001_auction_dim_gold
+          depends_on:
+            - task_key: 001_auctionsales_report_silver
+          notebook_task:
+            notebook_path: ../notebooks/Gold/001_auction_dim.ipynb
+            source: WORKSPACE
+        - task_key: 002_audit_log_Ingest
+          notebook_task:
+            notebook_path: ../notebooks/bronze/002_audit_log.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 003_timed_auction_Ingest
+          notebook_task:
+            notebook_path: ../notebooks/bronze/003_timed_auction.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 004_winning_bidders_Ingest
+          notebook_task:
+            notebook_path: ../notebooks/bronze/004_winning_bidders.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 005_auction_items_Ingest
+          notebook_task:
+            notebook_path: ../notebooks/bronze/005_auction_items.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 006_registered_users_Ingest
+          notebook_task:
+            notebook_path: ../notebooks/bronze/006_registered_users.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 007_audit_log_silver
+          depends_on:
+            - task_key: 002_audit_log_Ingest
+          notebook_task:
+            notebook_path: ../notebooks/Silver/007_audit_log.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 007_users_Ingest
+          notebook_task:
+            notebook_path: ../notebooks/bronze/007_users.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 002_users_silver
+          depends_on:
+            - task_key: 007_users_Ingest
+          notebook_task:
+            notebook_path: ../notebooks/Silver/002_users.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 003_registered_users_silver
+          depends_on:
+            - task_key: 006_registered_users_Ingest
+            - task_key: 007_users_Ingest
+            - task_key: 001_auctionsales_report_silver
+          notebook_task:
+            notebook_path: ../notebooks/Silver/003_registered_users.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 002_users_dim_gold
+          depends_on:
+            - task_key: 002_users_silver
+            - task_key: 003_registered_users_silver
+          notebook_task:
+            notebook_path: ../notebooks/Gold/002_users_dim.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 005_registered_users_fact_gold
+          depends_on:
+            - task_key: 003_registered_users_silver
+            - task_key: 002_users_dim_gold
+          notebook_task:
+            notebook_path: ../notebooks/Gold/005_registered_users_fact.ipynb
+            source: WORKSPACE
+        - task_key: 008_item_description_Ingest
+          notebook_task:
+            notebook_path: ../notebooks/bronze/008_item_description.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 005_auction_items_silver
+          depends_on:
+            - task_key: 005_auction_items_Ingest
+            - task_key: 001_auctionsales_report_silver
+            - task_key: 008_item_description_Ingest
+          notebook_task:
+            notebook_path: ../notebooks/Silver/004_auction_items.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 003_lots_dim_gold
+          depends_on:
+            - task_key: 005_auction_items_silver
+            - task_key: 001_auctionsales_report_silver
+          notebook_task:
+            notebook_path: ../notebooks/Gold/003_lots_dim.ipynb
+            source: WORKSPACE
+        - task_key: 004_timed_auction_silver
+          depends_on:
+            - task_key: 003_timed_auction_Ingest
+            - task_key: 003_registered_users_silver
+            - task_key: 005_auction_items_silver
+          notebook_task:
+            notebook_path: ../notebooks/Silver/005_timed_auction.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 006_timed_auction_fact_gold
+          depends_on:
+            - task_key: 004_timed_auction_silver
+            - task_key: 002_users_dim_gold
+          notebook_task:
+            notebook_path: ../notebooks/Gold/006_timed_auction_fact.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 006_winning_bidders_silver
+          depends_on:
+            - task_key: 004_winning_bidders_Ingest
+            - task_key: 001_auctionsales_report_silver
+            - task_key: 003_registered_users_silver
+            - task_key: 005_auction_items_silver
+          notebook_task:
+            notebook_path: ../notebooks/Silver/006_winning_bidders.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 009_consignors_bronze
+          notebook_task:
+            notebook_path: ../notebooks/bronze/009_consignors.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 004_consignors_dim_gold
+          depends_on:
+            - task_key: 009_consignors_bronze
+            - task_key: 005_auction_items_silver
+          notebook_task:
+            notebook_path: ../notebooks/Gold/004_consignors_dim.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+        - task_key: 007_auction_results_fact_gold
+          depends_on:
+            - task_key: 005_auction_items_silver
+            - task_key: 006_winning_bidders_silver
+            - task_key: 003_lots_dim_gold
+            - task_key: 002_users_dim_gold
+            - task_key: 004_consignors_dim_gold
+          notebook_task:
+            notebook_path: ../notebooks/Gold/007_auction_results_fact.ipynb
+            source: WORKSPACE
+          environment_key: 002_audit_log_Ingest_environment
+      tags:
+        ResourceClass: SingleNode
+      queue:
+        enabled: true
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: container
+          default: ${var.container}
+        - name: storage_account
+          default: ${var.storage_account}
+      environments:
+        - environment_key: 002_audit_log_Ingest_environment
+          spec:
+            environment_version: "5"
+      performance_target: PERFORMANCE_OPTIMIZED
